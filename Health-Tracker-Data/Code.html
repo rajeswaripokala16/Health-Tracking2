@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LifeRPG - Custom Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-dark: #09090b;
+      --bg-card: rgba(24, 24, 27, 0.6);
+      --primary: #8b5cf6; /* Violet */
+      --primary-glow: rgba(139, 92, 246, 0.5);
+      --secondary: #ec4899; /* Pink */
+      --success: #22c55e;
+      --text-main: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --border: rgba(255, 255, 255, 0.1);
+      --radius: 16px;
+      --font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font-family); user-select: none; }
+
+    body {
+      min-height: 100vh;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 50%, rgba(139, 92, 246, 0.15), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.15), transparent 25%);
+      color: var(--text-main);
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Layout */
+    .app-shell {
+      width: 100%;
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .app-shell { grid-template-columns: 1fr; }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+      transition: transform 0.2s;
+    }
+
+    /* --- SIDEBAR (User Profile) --- */
+    .profile-section { text-align: center; }
+    .avatar-ring {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      padding: 3px;
+      margin: 0 auto 15px;
+      position: relative;
+    }
+    .avatar-inner {
+      width: 100%; height: 100%;
+      background: #18181b;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+    }
+    .level-badge {
+      position: absolute; bottom: -5px; right: -5px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: bold;
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+    
+    /* XP Bar */
+    .xp-container { margin-top: 15px; text-align: left; }
+    .xp-header { display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 5px; color: var(--text-muted); }
+    .xp-track { height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
+    .xp-fill { height: 100%; background: linear-gradient(90deg, var(--secondary), var(--primary)); width: 0%; transition: width 0.5s ease; }
+
+    /* Login Form */
+    .auth-form { margin-top: 20px; }
+    .input-field {
+      width: 100%;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      outline: none;
+      font-size: 0.9rem;
+    }
+    .input-field::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .input-field:focus { border-color: var(--primary); background: rgba(0,0,0,0.5); }
+    
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: #7c3aed; box-shadow: 0 0 15px var(--primary-glow); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-outline:hover { border-color: var(--text-main); color: var(--text-main); }
+
+    /* --- MAIN DASHBOARD --- */
+    .dashboard-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+    }
+    .streak-display {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,165,0,0.1);
+      padding: 8px 16px;
+      border-radius: 99px;
+      border: 1px solid rgba(255,165,0,0.3);
+      color: #fbbf24;
+      font-weight: bold;
+    }
+
+    /* Streak ring */
+    .streak-circle {
+      width: 56px; height: 56px; border-radius: 50%;
+      display: grid; place-items: center; color: white; position: relative;
+      background: conic-gradient(var(--primary) 0%, rgba(255,255,255,0.06) 0%);
+      box-shadow: 0 4px 14px -6px rgba(0,0,0,0.7), 0 0 12px var(--primary-glow);
+    }
+    .streak-number { font-weight: 800; font-size: 1rem; }
+    .streak-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+    .debug-controls { display: flex; gap: 8px; margin-top: 6px; }
+    .debug-btn {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border); color: var(--text-muted);
+      padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 0.75rem;
+    }
+    .debug-btn:hover { color: var(--text-main); border-color: var(--primary); }
+
+    /* Grid Layout for Trackers */
+    .tracker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    /* Category Card Styles */
+    .cat-card {
+      background: rgba(30, 30, 35, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      position: relative;
+      transition: 0.3s;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .cat-card:hover { border-color: rgba(255,255,255,0.2); transform: translateY(-3px); }
+
+    .cat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .cat-title { font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .cat-icon { 
+      width: 32px; height: 32px; 
+      background: rgba(255,255,255,0.05); 
+      border-radius: 8px; 
+      display: flex; align-items: center; justify-content: center;
+    }
+    .delete-cat-btn {
+      background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; opacity: 0; transition: 0.2s;
+    }
+    .cat-card:hover .delete-cat-btn { opacity: 1; }
+    .delete-cat-btn:hover { color: #ef4444; }
+
+    /* Tasks */
+    .task-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .task-item:last-child { border-bottom: none; }
+
+    .checkbox {
+      width: 18px; height: 18px;
+      border: 2px solid var(--text-muted);
+      border-radius: 5px;
+      cursor: pointer;
+      display: grid; place-items: center;
+      transition: 0.2s;
+    }
+    .task-item.done .checkbox {
+      background: var(--success);
+      border-color: var(--success);
+    }
+    .task-item.done .checkbox::after {
+      content: '✓'; color: #000; font-size: 0.7rem; font-weight: 800;
+    }
+    .task-text { flex: 1; font-size: 0.9rem; transition: 0.2s; }
+    .task-item.done .task-text { text-decoration: line-through; color: var(--text-muted); }
+    
+    .del-task-btn {
+      background: transparent; border: none; color: #52525b; cursor: pointer;
+    }
+    .del-task-btn:hover { color: #ef4444; }
+
+    /* Add Task Input */
+    .add-task-row { display: flex; margin-top: 10px; }
+    .add-task-input {
+      flex: 1; background: transparent; border: none; border-bottom: 1px solid var(--border);
+      color: #fff; padding: 6px; font-size: 0.85rem; outline: none;
+    }
+    .add-task-input:focus { border-color: var(--primary); }
+    .add-task-btn {
+      background: transparent; color: var(--primary); border: none; font-size: 1.2rem; cursor: pointer; padding: 0 8px;
+    }
+
+    /* "Add New Category" Button (The + Card) */
+    .add-new-card {
+      border: 2px dashed var(--border);
+      background: rgba(255,255,255,0.02);
+      border-radius: 14px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 200px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: 0.3s;
+    }
+    .add-new-card:hover { border-color: var(--primary); color: var(--primary); background: rgba(139, 92, 246, 0.05); }
+    .add-new-icon { font-size: 2rem; margin-bottom: 10px; }
+
+    /* --- MODAL --- */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(5px);
+      z-index: 100;
+      display: flex; justify-content: center; align-items: center;
+      opacity: 0; pointer-events: none; transition: 0.3s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: #18181b; border: 1px solid var(--border);
+      padding: 25px; border-radius: 20px; width: 90%; max-width: 400px;
+      transform: scale(0.9); transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .modal-overlay.open .modal { transform: scale(1); }
+    .modal h2 { margin-bottom: 20px; }
+    
+    /* Utilities */
+    .hidden { display: none !important; }
+    .blur-area { filter: blur(8px); pointer-events: none; opacity: 0.5; }
+    .locked-msg {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      text-align: center; z-index: 10; width: 100%;
+    }
+
+    @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    /* Toast */
+    .toast {
+      position: fixed; right: 20px; bottom: 20px; background: rgba(0,0,0,0.8); color: #fff;
+      padding: 10px 14px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); display: none; z-index:200;
+    }
+    .spinner{ display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,0.2); border-top-color:var(--text-main); border-radius:50%; animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:8px }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <div class="app-shell">
+    
+    <div class="card profile-section">
+      <div class="avatar-ring">
+        <div class="avatar-inner">😎</div>
+        <div class="level-badge" id="levelBadge">Lvl 1</div>
+      </div>
+      
+      <div id="userInfo" class="hidden">
+        <h3 id="userNameDisplay">User</h3>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">Habit Master</p>
+        
+        <div class="xp-container">
+          <div class="xp-header">
+            <span>XP</span>
+            <span id="xpText">0 / 100</span>
+          </div>
+          <div class="xp-track">
+            <div class="xp-fill" id="xpBar"></div>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button class="btn btn-outline" onclick="openEditName()" style="font-size:0.8rem; padding:8px;">Edit Name</button>
+          <button class="btn btn-outline" onclick="openChangePassword()" style="font-size:0.8rem; padding:8px;">Change Password</button>
+          <button class="btn btn-outline" onclick="exportUser()" style="font-size:0.8rem; padding:8px;">Export</button>
+          <button class="btn btn-outline" onclick="document.getElementById('importFile').click()" style="font-size:0.8rem; padding:8px;">Import</button>
+        </div>
+
+        <div style="margin-top: 10px; display: flex; gap:8px;">
+          <button class="btn btn-outline" onclick="deleteAccount()" style="flex:1; background:transparent; color:#ef4444; border-color:rgba(239,68,68,0.15); font-size:0.8rem; padding:8px;">Delete Account</button>
+          <button class="btn btn-primary" onclick="logout()" style="flex:1; font-size:0.8rem; padding:8px;">Log Out</button>
+        </div>
+
+        <input type="file" id="importFile" accept="application/json" class="hidden" onchange="handleImportFile(event)">
+
+        <div id="profileMeta" style="margin-top:12px; font-size:0.85rem; color:var(--text-muted);">
+          <div>Email: <span id="profileEmail">-</span></div>
+          <div>Last Login: <span id="profileLastLogin">-</span></div>
+        </div>
+      </div>
+
+      <div id="authView" class="auth-form">
+        <h3 style="margin-bottom: 12px;">Sign up / Sign in</h3>
+        <input type="text" id="fullNameInput" class="input-field" placeholder="Full name (for new users)" />
+        <input type="email" id="emailInput" class="input-field" placeholder="Email" />
+        <input type="password" id="passwordInput" class="input-field" placeholder="Password" />
+        <button class="btn btn-primary" id="authBtn" onclick="handleAuth()">Sign In / Register</button>
+        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 10px;">
+          Enter your email and password. If this email is new, you'll be registered.
+        </p>
+        
+        <!-- Debug section -->
+        <div style="margin-top: 12px; padding: 10px; background: rgba(139,92,246,0.05); border-radius: 8px;">
+          <button class="btn btn-outline" style="font-size: 0.7rem; padding: 6px; width: 100%; margin-bottom: 6px;" onclick="toggleDebugPanel()">🐛 Debug</button>
+          <div id="debugPanel" style="display: none; font-size: 0.7rem; color: var(--text-muted); max-height: 100px; overflow-y: auto;">
+            <div id="debugContent">Loading...</div>
+          </div>
+          <button class="btn btn-outline" style="font-size: 0.7rem; padding: 6px; width: 100%; background: rgba(239,68,68,0.1); color: #ef4444; border-color: rgba(239,68,68,0.3);" onclick="clearAllData()">Clear All Data</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="position: relative; min-height: 600px;">
+      
+      <div id="lockScreen" class="locked-msg">
+        <h1 style="font-size: 4rem;">🔒</h1>
+        <h2>Dashboard Locked</h2>
+        <p style="color: var(--text-muted);">Please log in to manage your sections.</p>
+      </div>
+
+      <div id="mainContent" class="blur-area">
+        <div class="dashboard-header">
+          <div>
+            <h2>My Dashboard</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem;" id="dateDisplay">Loading...</p>
+          </div>
+          <div class="streak-display">
+            <div class="streak-circle" id="streakRing" title="Daily Streak">
+              <div>
+                <div class="streak-number" id="streakCount">0</div>
+                <div class="streak-label">Days</div>
+              </div>
+            </div>
+            <div style="text-align:left;">
+              <div style="font-weight:bold;">🔥 Streak</div>
+              <div style="color:var(--text-muted); font-size:0.85rem;" id="streakSub">Keep it going!</div>
+              <div class="debug-controls" id="streakDebug" style="display:none;">
+                <button class="debug-btn" onclick="simulateYesterday()">Simulate Yesterday</button>
+                <button class="debug-btn" onclick="resetStreak()">Reset Streak</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tracker-grid" id="trackerGrid">
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="catModal">
+    <div class="modal">
+      <h2>Create New Section</h2>
+      <div style="margin-bottom: 15px;">
+        <label style="font-size: 0.8rem; color: var(--text-muted);">Section Name</label>
+        <input type="text" id="newCatName" class="input-field" placeholder="e.g. Studying, Gaming, Guitar">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="font-size: 0.8rem; color: var(--text-muted);">Icon (Emoji)</label>
+        <input type="text" id="newCatIcon" class="input-field" placeholder="e.g. 📚, 🎮, 🎸" maxlength="2">
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmAddCategory()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout Modal -->
+  <div class="modal-overlay" id="logoutModal">
+    <div class="modal" style="max-width: 450px;">
+      <h2>👋 See You Later!</h2>
+      <div style="margin-bottom: 20px;">
+        <div style="background: rgba(139,92,246,0.1); border-left: 3px solid var(--primary); padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+          <div style="font-size: 0.9rem; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <span>XP This Session:</span>
+              <span style="font-weight: bold; color: var(--secondary);" id="logoutSessionXP">0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <span>Tasks Completed:</span>
+              <span style="font-weight: bold; color: var(--success);" id="logoutTasksCompleted">0</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span>Streak:</span>
+              <span style="font-weight: bold; color: #fbbf24;" id="logoutStreak">0</span>
+            </div>
+          </div>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px;">
+          Your progress has been saved. Come back tomorrow to keep your streak alive! 🔥
+        </p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-outline" onclick="cancelLogout()">Stay</button>
+        <button class="btn btn-primary" onclick="confirmLogout()">Log Out</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple synthesized beeps to avoid external file dependencies
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+      
+      if (type === 'check') {
+        // High pitched "Ding"
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'level') {
+        // "Power up" sound
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.linearRampToValueAtTime(600, now + 0.3);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.5);
+      }
+    }
+  </script>
+
+  <script>
+    /* --- DATA STRUCTURE --- */
+    const defaultCategories = [
+      {
+        id: 1, title: "Studying", icon: "📚",
+        tasks: [
+          { id: 101, text: "Read Chapter 1", done: false },
+          { id: 102, text: "Review Notes", done: false }
+        ]
+      },
+      {
+        id: 2, title: "Fitness", icon: "💪",
+        tasks: [
+          { id: 201, text: "20 Pushups", done: false }
+        ]
+      }
+    ];
+
+    let appData = {
+      // Per-session / current view fields (kept in sync with current user)
+      username: null,
+      xp: 0,
+      level: 1,
+      streak: 0,
+      lastLogin: null,
+      categories: JSON.parse(JSON.stringify(defaultCategories)), // Deep copy
+
+      // Multi-user storage
+      users: [], // { email, name, pwHash, xp, level, streak, lastLogin, categories }
+      currentEmail: null
+    };
+
+    // Track session start for logout summary (declare early)
+    let sessionStartXP = 0;
+    let sessionStartTasks = 0;
+
+    /* --- INITIALIZATION --- */
+    document.getElementById('dateDisplay').innerText = new Date().toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' });
+    
+    // Load from LocalStorage
+    const saved = localStorage.getItem('lifeRPG_Data');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // merge parsed into appData to preserve defaults
+      appData = Object.assign(appData, parsed);
+
+      // If a currentEmail exists, load that user's data into the session fields and auto-login
+      if (appData.currentEmail) {
+        const u = appData.users && appData.users.find(x => x.email === appData.currentEmail);
+        if (u) {
+          loadUserToAppData(u);
+          login(true);
+        }
+      }
+    }
+
+    /* --- AUTH --- */
+    function login(isAuto = false) {
+      // Update UI
+      document.getElementById('authView').classList.add('hidden');
+      document.getElementById('userInfo').classList.remove('hidden');
+      document.getElementById('lockScreen').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('blur-area');
+      
+      document.getElementById('userNameDisplay').innerText = appData.username;
+      
+      checkDailyStreak();
+      renderAll();
+      saveData();
+
+      // Track session XP at login for session summary on logout
+      sessionStartXP = appData.xp;
+      sessionStartTasks = appData.categories.reduce((sum, cat) => 
+        sum + cat.tasks.filter(t => t.done).length, 0);
+
+      // Show debug controls when logged in (for manual testing)
+      const dbg = document.getElementById('streakDebug');
+      if (dbg) dbg.style.display = 'flex';
+    }
+
+    function initiateLogout() {
+      console.log('initiateLogout called');
+      // Calculate session stats
+      const completedTasks = appData.categories.reduce((sum, cat) => 
+        sum + cat.tasks.filter(t => t.done).length, 0);
+      const xpThisSession = appData.xp - sessionStartXP;
+      
+      console.log('Session stats:', { xpThisSession, completedTasks, streak: appData.streak });
+      
+      // Populate logout modal with stats
+      document.getElementById('logoutSessionXP').innerText = Math.max(0, xpThisSession);
+      document.getElementById('logoutTasksCompleted').innerText = completedTasks;
+      document.getElementById('logoutStreak').innerText = `${appData.streak} Days`;
+      
+      // Show logout confirmation modal
+      const modal = document.getElementById('logoutModal');
+      console.log('Modal element:', modal);
+      if (modal) {
+        modal.classList.add('open');
+        console.log('Modal opened');
+      }
+    }
+
+    function cancelLogout() {
+      console.log('cancelLogout called');
+      const modal = document.getElementById('logoutModal');
+      if (modal) modal.classList.remove('open');
+      showToast('Welcome back!');
+    }
+
+    function confirmLogout() {
+      console.log('confirmLogout called');
+      appData.username = null;
+      appData.currentEmail = null;
+      saveData();
+      showToast('Logged out successfully');
+      setTimeout(() => location.reload(), 500); // Give toast time to show
+    }
+
+    function logout() {
+      console.log('logout called');
+      initiateLogout();
+    }
+
+    // Debug helpers to test streak logic without changing system clock
+    function simulateYesterday() {
+      const todayDate = new Date();
+      const yesterdayDate = new Date(todayDate);
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      appData.lastLogin = yesterdayDate.toDateString();
+      saveData();
+      // Now call checkDailyStreak which will compare lastLogin to yesterday and increment
+      checkDailyStreak();
+      renderAll();
+      alert('Simulated: last login set to yesterday. Streak updated.');
+    }
+
+    function resetStreak() {
+      if (!confirm('Reset streak to 0?')) return;
+      appData.streak = 0;
+      appData.lastLogin = null;
+      saveData();
+      renderAll();
+    }
+
+    // --- AUTH: Registration + Login (client-side, localStorage) ---
+    async function hashPassword(pw) {
+      const enc = new TextEncoder();
+      const data = enc.encode(pw);
+      const hashBuf = await crypto.subtle.digest('SHA-256', data);
+      const hashArr = Array.from(new Uint8Array(hashBuf));
+      return hashArr.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function handleAuth() {
+      const name = document.getElementById('fullNameInput').value.trim();
+      const email = document.getElementById('emailInput').value.trim().toLowerCase();
+      const pw = document.getElementById('passwordInput').value;
+
+      if (!email || !pw) return showToast('Please enter email and password');
+
+      // Ensure users array exists
+      appData.users = appData.users || [];
+
+      const existing = appData.users.find(u => u.email === email);
+      const authBtn = document.getElementById('authBtn');
+      if (authBtn) { authBtn.disabled = true; authBtn.innerHTML = '<span class="spinner"></span>Checking'; }
+      
+      hashPassword(pw).then(pwHash => {
+        console.log('Email:', email, 'Hash:', pwHash.substring(0,8)+'...');
+        
+        if (existing) {
+          // Login flow
+          console.log('Existing user. Stored hash:', existing.pwHash.substring(0,8)+'...');
+          if (existing.pwHash === pwHash) {
+            loadUserToAppData(existing);
+            saveData();
+            showToast('Signed in successfully');
+            login();
+          } else {
+            showToast('Incorrect password for this email');
+            console.warn('Password mismatch!');
+          }
+        } else {
+          // Register flow
+          if (!name) return showToast('Please enter your full name to register');
+
+          const newUser = {
+            email: email,
+            name: name,
+            pwHash: pwHash,
+            xp: 0,
+            level: 1,
+            streak: 0,
+            lastLogin: null,
+            categories: JSON.parse(JSON.stringify(defaultCategories))
+          };
+          appData.users.push(newUser);
+          loadUserToAppData(newUser);
+          saveData();
+          showToast('Registration complete — welcome, ' + name + '!');
+          login();
+        }
+        if (authBtn) { authBtn.disabled = false; authBtn.innerText = 'Sign In / Register'; }
+      });
+    }
+
+    function toggleShowPassword() {
+      const p = document.getElementById('passwordInput');
+      if (!p) return;
+      p.type = p.type === 'password' ? 'text' : 'password';
+    }
+
+    function showToast(msg, timeout = 3000) {
+      let t = document.getElementById('appToast');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'appToast';
+        t.className = 'toast';
+        document.body.appendChild(t);
+      }
+      t.innerText = msg;
+      t.style.display = 'block';
+      clearTimeout(t._to);
+      t._to = setTimeout(() => { t.style.display = 'none'; }, timeout);
+    }
+
+    // Profile: edit name
+    function openEditName() {
+      const newName = prompt('Enter your full name', appData.username || '');
+      if (newName === null) return;
+      appData.username = newName.trim() || appData.username;
+      saveData();
+      renderProfile();
+      showToast('Name updated');
+    }
+
+    // Profile: change password
+    async function openChangePassword() {
+      const current = prompt('Enter current password');
+      if (current === null) return;
+      const newpw = prompt('Enter new password');
+      if (newpw === null) return;
+
+      const u = appData.users.find(x => x.email === appData.currentEmail);
+      if (!u) return showToast('No user loaded');
+
+      const curHash = await hashPassword(current);
+      if (curHash !== u.pwHash) return showToast('Current password incorrect');
+
+      const newHash = await hashPassword(newpw);
+      u.pwHash = newHash;
+      saveData();
+      showToast('Password changed');
+    }
+
+    function deleteAccount() {
+      if (!confirm('Delete your account and all local data? This cannot be undone.')) return;
+      appData.users = appData.users.filter(x => x.email !== appData.currentEmail);
+      appData.currentEmail = null;
+      appData.username = null;
+      saveData();
+      showToast('Account deleted');
+      location.reload();
+    }
+
+    // Export current user JSON
+    function exportUser() {
+      const u = appData.users.find(x => x.email === appData.currentEmail);
+      if (!u) return showToast('No user to export');
+      const data = JSON.stringify(u, null, 2);
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${u.email.replace(/[@<>:\/\\]/g,'_')}_backup.json`; document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Export started');
+    }
+
+    function handleImportFile(e) {
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        try {
+          const obj = JSON.parse(ev.target.result);
+          if (!obj.email) return showToast('Invalid import file');
+          // Replace or add
+          const idx = appData.users.findIndex(x => x.email === obj.email);
+          if (idx >= 0) appData.users[idx] = obj; else appData.users.push(obj);
+          saveData();
+          showToast('Import successful');
+        } catch (err) { showToast('Import failed'); }
+      };
+      reader.readAsText(f);
+    }
+
+    // Debug helpers
+    function toggleDebugPanel() {
+      const panel = document.getElementById('debugPanel');
+      if (!panel) return;
+      if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        const content = document.getElementById('debugContent');
+        if (content) {
+          const users = appData.users || [];
+          content.innerHTML = `<strong>Stored Users (${users.length}):</strong><br>` + 
+            users.map(u => `📧 ${u.email}<br>👤 ${u.name}<br>🔐 ${u.pwHash.substring(0,12)}...<br><br>`).join('');
+        }
+      } else {
+        panel.style.display = 'none';
+      }
+    }
+
+    function clearAllData() {
+      if (!confirm('Delete ALL users and data? This cannot be undone.')) return;
+      localStorage.removeItem('lifeRPG_Data');
+      appData.users = [];
+      appData.currentEmail = null;
+      appData.username = null;
+      showToast('All data cleared. Page will reload.');
+      setTimeout(() => location.reload(), 1000);
+    }
+
+    /* --- LOGIC: XP & LEVELS --- */
+    function addXP(amount) {
+      const oldLevel = appData.level;
+      appData.xp += amount;
+      
+      // Level up logic: Level * 100 XP required
+      const reqXP = appData.level * 100;
+      
+      if (appData.xp >= reqXP) {
+        appData.xp = appData.xp - reqXP;
+        appData.level++;
+        playSound('level');
+        alert(`🎉 LEVEL UP! You are now Level ${appData.level}!`);
+      }
+      renderProfile();
+      saveData();
+    }
+
+    function checkDailyStreak() {
+      const todayDate = new Date();
+      const today = todayDate.toDateString();
+
+      // If already logged in today, nothing to do
+      if (appData.lastLogin === today) return;
+
+      // Determine yesterday
+      const yesterdayDate = new Date(todayDate);
+      yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+      const yesterday = yesterdayDate.toDateString();
+
+      if (appData.lastLogin === yesterday) {
+        // consecutive day
+        appData.streak = (appData.streak || 0) + 1;
+      } else {
+        // break in streak or first login
+        appData.streak = 1;
+      }
+
+      appData.lastLogin = today;
+      saveData();
+      updateStreakUI();
+    }
+
+    /* --- LOGIC: CATEGORIES & TASKS --- */
+    function renderAll() {
+      renderProfile();
+      renderGrid();
+    }
+
+    function renderProfile() {
+      document.getElementById('levelBadge').innerText = `Lvl ${appData.level}`;
+      // Streak text inside the ring will be updated by updateStreakUI
+      updateStreakUI();
+      
+      const reqXP = appData.level * 100;
+      const pct = (appData.xp / reqXP) * 100;
+      
+      document.getElementById('xpText').innerText = `${appData.xp} / ${reqXP}`;
+      document.getElementById('xpBar').style.width = `${pct}%`;
+      
+      // Update profile meta with email and last login
+      const emailEl = document.getElementById('profileEmail');
+      const lastEl = document.getElementById('profileLastLogin');
+      if (emailEl) emailEl.innerText = appData.currentEmail || '-';
+      if (lastEl) lastEl.innerText = appData.lastLogin || '-';
+
+      document.getElementById('userNameDisplay').innerText = appData.username || 'User';
+    }
+
+    function updateStreakUI() {
+      const streak = appData.streak || 0;
+      const countEl = document.getElementById('streakCount');
+      const ring = document.getElementById('streakRing');
+      const sub = document.getElementById('streakSub');
+
+      if (countEl) countEl.innerText = streak;
+
+      // Use a 7-day progress for the ring visualization
+      const pct = Math.min(100, (streak / 7) * 100);
+      if (ring) ring.style.background = `conic-gradient(var(--primary) ${pct}%, rgba(255,255,255,0.06) ${pct}% )`;
+
+      if (sub) {
+        if (streak <= 1) sub.innerText = 'Get started — do something today!';
+        else if (streak < 7) sub.innerText = `Nice — ${streak} day${streak>1?'s':''} in a row`; 
+        else sub.innerText = `🔥 ${streak}-day streak — Legendary!`;
+      }
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('trackerGrid');
+      grid.innerHTML = '';
+
+      // 1. Render existing categories
+      appData.categories.forEach(cat => {
+        const card = document.createElement('div');
+        card.className = 'cat-card';
+        
+        // Tasks HTML
+        let tasksHtml = '';
+        cat.tasks.forEach(task => {
+          tasksHtml += `
+            <div class="task-item ${task.done ? 'done' : ''}">
+              <div class="checkbox" onclick="toggleTask(${cat.id}, ${task.id})"></div>
+              <span class="task-text">${task.text}</span>
+              <button class="del-task-btn" onclick="deleteTask(${cat.id}, ${task.id})">&times;</button>
+            </div>
+          `;
+        });
+
+        card.innerHTML = `
+          <div class="cat-header">
+            <div class="cat-title">
+              <div class="cat-icon">${cat.icon}</div>
+              ${cat.title}
+            </div>
+            <button class="delete-cat-btn" title="Delete Section" onclick="deleteCategory(${cat.id})">🗑️</button>
+          </div>
+          <div class="task-list">
+            ${tasksHtml}
+          </div>
+          <div class="add-task-row">
+            <input type="text" class="add-task-input" id="input-${cat.id}" placeholder="New task..." onkeypress="handleEnter(event, ${cat.id})">
+            <button class="add-task-btn" onclick="addTask(${cat.id})">+</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      // 2. Render "Add New" Button
+      const addBtn = document.createElement('div');
+      addBtn.className = 'add-new-card';
+      addBtn.onclick = openModal;
+      addBtn.innerHTML = `
+        <div class="add-new-icon">+</div>
+        <div>New Section</div>
+      `;
+      grid.appendChild(addBtn);
+    }
+
+    /* --- INTERACTIONS --- */
+
+    // Tasks
+    function toggleTask(catId, taskId) {
+      const cat = appData.categories.find(c => c.id === catId);
+      const task = cat.tasks.find(t => t.id === taskId);
+      
+      task.done = !task.done;
+      
+      if (task.done) {
+        playSound('check');
+        addXP(10); // Give 10 XP
+      } else {
+        appData.xp = Math.max(0, appData.xp - 10); // Remove XP if unchecked
+      }
+      
+      renderAll();
+      saveData();
+    }
+
+    function addTask(catId) {
+      const input = document.getElementById(`input-${catId}`);
+      const text = input.value.trim();
+      if (!text) return;
+
+      const cat = appData.categories.find(c => c.id === catId);
+      cat.tasks.push({ id: Date.now(), text: text, done: false });
+      
+      input.value = '';
+      renderAll();
+      saveData();
+      // Refocus to allow rapid entry
+      setTimeout(() => document.getElementById(`input-${catId}`).focus(), 50);
+    }
+
+    function deleteTask(catId, taskId) {
+      const cat = appData.categories.find(c => c.id === catId);
+      cat.tasks = cat.tasks.filter(t => t.id !== taskId);
+      renderAll();
+      saveData();
+    }
+    
+    function handleEnter(e, catId) {
+      if(e.key === 'Enter') addTask(catId);
+    }
+
+    // Categories (Modal Logic)
+    function openModal() {
+      document.getElementById('catModal').classList.add('open');
+      document.getElementById('newCatName').focus();
+    }
+    function closeModal() {
+      document.getElementById('catModal').classList.remove('open');
+      document.getElementById('newCatName').value = '';
+      document.getElementById('newCatIcon').value = '';
+    }
+
+    function confirmAddCategory() {
+      const name = document.getElementById('newCatName').value.trim();
+      const icon = document.getElementById('newCatIcon').value.trim() || '⚡'; // Default icon
+      
+      if (!name) return alert("Please enter a section name");
+
+      appData.categories.push({
+        id: Date.now(),
+        title: name,
+        icon: icon,
+        tasks: []
+      });
+
+      closeModal();
+      renderAll();
+      saveData();
+    }
+
+    function deleteCategory(id) {
+      if(confirm("Are you sure you want to delete this entire section?")) {
+        appData.categories = appData.categories.filter(c => c.id !== id);
+        renderAll();
+        saveData();
+      }
+    }
+
+    // Storage
+    function saveData() {
+      // Sync per-user stored object with current session fields
+      syncUserFromAppData();
+      localStorage.setItem('lifeRPG_Data', JSON.stringify(appData));
+    }
+
+    function syncUserFromAppData() {
+      if (!appData.currentEmail) return;
+      const u = appData.users && appData.users.find(x => x.email === appData.currentEmail);
+      if (!u) return;
+      u.name = appData.username;
+      u.xp = appData.xp;
+      u.level = appData.level;
+      u.streak = appData.streak;
+      u.lastLogin = appData.lastLogin;
+      u.categories = appData.categories;
+    }
+
+    function loadUserToAppData(u) {
+      if (!u) return;
+      appData.username = u.name;
+      appData.xp = u.xp || 0;
+      appData.level = u.level || 1;
+      appData.streak = u.streak || 0;
+      appData.lastLogin = u.lastLogin || null;
+      appData.categories = u.categories ? JSON.parse(JSON.stringify(u.categories)) : JSON.parse(JSON.stringify(defaultCategories));
+      appData.currentEmail = u.email;
+    }
+
+  </script>
+  <script>
+    // Auto-test harness: open Code.html?autotest=1 to run
+    function runAutoTest() {
+      const params = new URLSearchParams(location.search);
+      if (params.get('autotest') !== '1') return;
+
+      console.log('AutoTest: starting...');
+
+      // Prepare: set a fake previous streak state (1 day) and lastLogin = yesterday
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      appData.username = 'AutoTester';
+      appData.streak = 1;
+      appData.lastLogin = yesterday.toDateString();
+      saveData();
+
+      // Logging in now should increment the streak to 2
+      login(true);
+      renderAll();
+
+      console.log('AutoTest: finished. streak=', appData.streak, 'lastLogin=', appData.lastLogin);
+      alert('AutoTest finished — streak = ' + appData.streak);
+    }
+
+    // Run automatically on page load
+    window.addEventListener('load', runAutoTest);
+  </script>
+
+  <script>
+    // For local development: auto-open the server start guide
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      setTimeout(() => {
+        alert(`LifeRPG Tracker\n\nTo start the local server:\n1. Open a terminal.\n2. Navigate to this folder.\n3. Run: python -m http.server 8000\n\nThen, open http://localhost:8000 in your browser.\n\nDouble-click: start-server.bat`);
+      }, 500);
+    }
+  </script>
+</body>
+</html>
